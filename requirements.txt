@@ -1,0 +1,6 @@
+dbt-core
+dbt-duckdb
+openpyxl
+pydantic
+psycopg2-binary
+PyYAML
