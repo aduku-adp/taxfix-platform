@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: "Raw CDC events ingested from MongoDB change stream JSONL files."
+    tables:
+      - name: cdc_events
+        description: >
+          One row per CDC event. Keyed on uuid. Populated by the data-ingestion
+          pipeline (modules/data-ingestion/raw.py). Never modified after write
+          except via DELETE+INSERT during reprocessing.
+        columns:
+          - name: uuid
+            description: "Unique event identifier. Primary key."
+          - name: source_timestamp
+            description: "When the change occurred in MongoDB."
+          - name: read_timestamp
+            description: "When the CDC connector captured the event."
+          - name: change_type
+            description: "INSERT, UPDATE, or DELETE."
+          - name: payload
+            description: "Full document for INSERT/UPDATE; only _id for DELETE."
+          - name: raw_event
+            description: "Complete original JSON line for audit and schema evolution."
+          - name: ingested_at
+            description: "When this row was loaded into DuckDB."

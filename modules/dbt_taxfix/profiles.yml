@@ -1,0 +1,11 @@
+dbt_taxfix:
+  target: airflow
+  outputs:
+    airflow:
+      type: duckdb
+      path: "{{ env_var('TAXFIX_DB_PATH') }}"
+      threads: 4
+    dev:
+      type: duckdb
+      path: "{{ env_var('TAXFIX_DB_PATH', 'dbs/duckdb_data/dev.duckdb') }}"
+      threads: 4

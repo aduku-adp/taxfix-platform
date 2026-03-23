@@ -64,6 +64,8 @@ data/users/**/*.jsonl
 | Schema | Table | Built by | Contents |
 |--------|-------|----------|----------|
 | `raw` | `cdc_events` | data-ingestion Python script | All raw CDC events, one row per event |
+| `raw` | `ingested_files` | data-ingestion Python script | One row per processed source file; drives incremental cutoff |
+| `raw` | `ingestion_errors` | data-ingestion Python script | Dead-letter table: one row per skipped event with raw line and error reason |
 | `staging` | `stg_cdc_events` | dbt model | Parsed + typed events (JSON fields extracted) |
 | `clean` | `users` | dbt model | Current state per user; DELETEs excluded; `age_group` replaces `date_of_birth` |
 | `snapshots` | `users_snapshot` | dbt snapshot | Full SCD Type 2 history of `clean.users` |
@@ -175,7 +177,7 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
 **Do:**
 
 `loader.py`:
-- Creates schema `raw` and two tables (if not exist):
+- Creates schema `raw` and three tables (if not exist):
   ```sql
   -- tracks raw CDC events
   raw.cdc_events (
@@ -190,9 +192,23 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
 
   -- tracks processed source files; drives the incremental cutoff
   raw.ingested_files (
-    file_path        VARCHAR PRIMARY KEY,
+    file_path         VARCHAR PRIMARY KEY,
     last_modified_utc TIMESTAMPTZ,
-    ingested_at      TIMESTAMPTZ DEFAULT now()
+    status            VARCHAR,    -- 'success' | 'partial' | 'failed'
+    ingested_at       TIMESTAMPTZ DEFAULT now()
+  )
+  -- status values:
+  --   success  — all events in the file loaded without errors
+  --   partial  — at least one event loaded, at least one skipped
+  --   failed   — zero events loaded (all invalid or file unreadable)
+
+  -- dead-letter table: one row per skipped event (schema or business-rule violation)
+  raw.ingestion_errors (
+    file_path   VARCHAR,
+    raw_line    TEXT,     -- original JSON line for replay
+    error_type  VARCHAR,  -- 'schema_error' | 'rule_violation'
+    error_msg   TEXT,
+    ingested_at TIMESTAMPTZ DEFAULT now()
   )
   ```
 - `get_cutoff(conn, lookback_hours: int) -> datetime` — returns `max(last_modified_utc) - timedelta(hours=lookback_hours)` from `raw.ingested_files`; returns `datetime.min` if table is empty. `lookback_hours` defaults to `int(os.getenv('TAXFIX_LOOKBACK_HOURS', 24))`.
@@ -200,7 +216,8 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
   1. `DELETE FROM raw.cdc_events WHERE uuid IN (<batch_uuids>)`
   2. `INSERT INTO raw.cdc_events VALUES (...)`
   Re-processing a file replaces existing rows with the latest data rather than skipping them.
-- `record_file(conn, file_path, last_modified_utc)` — `INSERT OR REPLACE INTO raw.ingested_files` — upserts the file tracking record after a successful batch load.
+- `record_file(conn, file_path, last_modified_utc, status)` — `INSERT OR REPLACE INTO raw.ingested_files` — upserts the file tracking record. `status` is computed by `raw.py` after processing the file: `'success'` if all events loaded, `'partial'` if some skipped, `'failed'` if none loaded.
+- `record_error(conn, file_path, raw_line, error_type, error_msg)` — `INSERT INTO raw.ingestion_errors` — appends one row per skipped event. `error_type` is `'schema_error'` (JSON parse failure or Pydantic `ValidationError`) or `'rule_violation'` (business rule check).
 
 `validation_models.py` (Pydantic):
 - `CdcEvent` model — required fields: `uuid` (str), `source_timestamp` (datetime), `read_timestamp` (datetime), `source_metadata.change_type` (literal `INSERT`|`UPDATE`|`DELETE`), `payload` (dict)
@@ -220,9 +237,10 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
   1. Reads cutoff from `loader.get_cutoff()` (file mtime-based, with lookback)
   2. Globs all `events-*.jsonl` under `data_dir` recursively
   3. For each file: reads `os.path.getmtime(file)` converted to UTC; **skips file if `last_modified_utc < cutoff`**
-  4. For each event in an eligible file: parse JSON → Pydantic validation → business rule check → add valid events to batch
+  4. For each event in an eligible file: parse JSON → Pydantic validation → business rule check → add valid events to batch; call `loader.record_error()` for each skipped event with the original raw line and reason
   5. Calls `loader.insert_batch(conn, batch)` per file
-  6. Calls `loader.record_file(conn, file_path, last_modified_utc)` after each successful file load
+  6. Computes file status: `'success'` if skipped == 0, `'partial'` if loaded > 0 and skipped > 0, `'failed'` if loaded == 0
+  7. Calls `loader.record_file(conn, file_path, last_modified_utc, status)` after processing each file
 - Prints summary: files scanned, files loaded, files skipped (too old), events loaded, events skipped (schema error / rule violation)
 
 **Also create `modules/data-ingestion/tests/` with:**
@@ -253,24 +271,27 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
 - `test_multiple_violations_returned` — event triggering more than one rule → all violations in list
 
 `tests/test_loader.py` (uses `duckdb.connect(':memory:')`):
-- `test_create_schema_and_tables` — `ensure_schema(conn)` creates both `raw.cdc_events` and `raw.ingested_files`; running twice does not raise
+- `test_create_schema_and_tables` — `ensure_schema(conn)` creates `raw.cdc_events`, `raw.ingested_files`, and `raw.ingestion_errors`; running twice does not raise
 - `test_get_cutoff_empty_table` — `get_cutoff(conn, lookback_hours=24)` returns `datetime.min` when `raw.ingested_files` is empty
 - `test_get_cutoff_with_data` — after calling `record_file(conn, 'f', T)`, `get_cutoff(conn, lookback_hours=0)` returns `T` exactly
 - `test_get_cutoff_applies_lookback` — after `record_file(conn, 'f', T)`, `get_cutoff(conn, lookback_hours=24)` returns `T - 24h`
 - `test_insert_batch_inserts_rows` — `insert_batch(conn, [row])` → `raw.cdc_events` has 1 row
 - `test_insert_batch_replaces_on_duplicate_uuid` — `insert_batch` called twice with same `uuid` but different `change_type` → row count remains 1 and `change_type` reflects the second call (DELETE+INSERT replaces, unlike INSERT OR IGNORE which would preserve the first)
 - `test_insert_batch_mixed_new_and_duplicate` — batch with 2 new + 1 existing uuid → row count increases by 2; existing row is replaced
-- `test_record_file_inserts_row` — `record_file(conn, 'path/f.jsonl', T)` → `raw.ingested_files` has 1 row
-- `test_record_file_upserts_on_repeat` — calling `record_file` twice with the same path but different `last_modified_utc` → still 1 row with the updated timestamp
+- `test_record_file_inserts_row` — `record_file(conn, 'path/f.jsonl', T, 'success')` → `raw.ingested_files` has 1 row with `status='success'`
+- `test_record_file_upserts_on_repeat` — calling `record_file` twice with the same path but different `last_modified_utc` and status → still 1 row with the updated timestamp and status
+- `test_record_error_inserts_row` — `record_error(conn, 'f.jsonl', '{"bad": 1}', 'schema_error', 'missing uuid')` → `raw.ingestion_errors` has 1 row with correct `error_type` and `error_msg`
+- `test_record_error_appends_multiple` — calling `record_error` twice → 2 rows in `raw.ingestion_errors` (errors accumulate, no dedup)
 
 `tests/test_raw.py` (uses `tmp_path` fixture for temp DB + temp JSONL files):
-- `test_full_pipeline_loads_events` — write 3 valid JSONL events to a temp file, run pipeline → `raw.cdc_events` has 3 rows; `raw.ingested_files` has 1 row for that file
+- `test_full_pipeline_loads_events` — write 3 valid JSONL events to a temp file, run pipeline → `raw.cdc_events` has 3 rows; `raw.ingested_files` has 1 row with `status='success'`
 - `test_incremental_skips_old_files` — seed `raw.ingested_files` with a recent cutoff T; create a JSONL file and set its mtime to before T → file is skipped, 0 new rows loaded
 - `test_incremental_loads_new_files` — seed cutoff at T; create a JSONL file with mtime after T → file is loaded, rows appear in `raw.cdc_events`
 - `test_delete_insert_replaces_existing_rows` — load a file once; modify an event's `change_type` in the same file (same uuid); load again → row reflects the new `change_type`, count unchanged
 - `test_full_refresh_reloads_all` — run once, then run with `--full-refresh` → row count unchanged (all rows replaced in place via DELETE+INSERT)
-- `test_schema_error_skipped` — JSONL line missing `uuid` → loaded count is 0, error count is 1, no exception raised
-- `test_business_rule_violation_skipped` — DELETE event with extra payload fields → loaded count is 0, violation count is 1
+- `test_schema_error_skipped` — JSONL line missing `uuid` → loaded count is 0, error count is 1, no exception raised; `raw.ingestion_errors` has 1 row with `error_type='schema_error'`; `raw.ingested_files` has `status='failed'`
+- `test_business_rule_violation_skipped` — DELETE event with extra payload fields → loaded count is 0, violation count is 1; `raw.ingestion_errors` has 1 row with `error_type='rule_violation'` and the original raw line preserved in `raw_line`; `raw.ingested_files` has `status='failed'`
+- `test_partial_file_status` — file with 1 valid event and 1 schema-error event → `raw.ingestion_errors` has 1 row; `raw.ingested_files` has `status='partial'`
 - `test_summary_printed` (capsys) — summary includes "files scanned", "files loaded", "files skipped", "events loaded", "skipped"
 
 **Files:** `modules/data-ingestion/raw.py`, `modules/data-ingestion/loader.py`, `modules/data-ingestion/validation_models.py`, `modules/data-ingestion/business_rules.py`, `modules/data-ingestion/tests/__init__.py`, `modules/data-ingestion/tests/conftest.py`, `modules/data-ingestion/tests/test_validation_models.py`, `modules/data-ingestion/tests/test_business_rules.py`, `modules/data-ingestion/tests/test_loader.py`, `modules/data-ingestion/tests/test_raw.py`
@@ -281,6 +302,7 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
 - Second run (idempotency): `raw.cdc_events` row count unchanged; `raw.ingested_files` rows updated; summary shows 0 files loaded
 - Full-refresh: `python modules/data-ingestion/raw.py dbs/duckdb_data/dev.duckdb data/users --full-refresh` → same final row count (rows replaced via DELETE+INSERT, not added)
 - Manual: modify an event field in a previously loaded JSONL file, re-run → the row in `raw.cdc_events` reflects the change (confirms DELETE+INSERT over INSERT OR IGNORE)
+- Manual: `SELECT error_type, count(*) FROM raw.ingestion_errors GROUP BY 1` → shows any schema or rule errors from the run; `raw_line` column contains the original JSON for replay
 
 ---
 

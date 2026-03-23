@@ -212,6 +212,7 @@ __marimo__/
 .DS_Store
 /dbs/pg_data/
 /dbs/duckdb_data/
+!/dbs/duckdb_data/.gitkeep
 
 *.pytest_cache
 

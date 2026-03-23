@@ -64,14 +64,7 @@ After the `cdc_pipeline` DAG completes:
 python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/dev.duckdb
 ```
 
-### 4. Go to FastAPI Swagger: `http://localhost:8000/docs`
-
-
 ## Data location
-
-Corporate input files are expected in:
-
-- `data/corporates/*.xlsm|*.xlsx`
 
 CDC events (users change stream) are expected in:
 

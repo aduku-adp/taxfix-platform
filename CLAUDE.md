@@ -27,7 +27,7 @@ modules/
     README.md           # DAG catalogue, how to trigger, config location
   data-ingestion/
     raw.py              # CLI entrypoint + pipeline orchestrator
-    loader.py           # DuckDB DDL + incremental DML (cutoff, insert_batch, record_file)
+    loader.py           # DuckDB DDL + incremental DML (cutoff, insert_batch, record_file, record_error)
     validation_models.py # Pydantic schema for CDC events (CdcEvent, extra='allow')
     business_rules.py   # Business-rule checks (payload completeness per change_type)
     queries/
@@ -128,6 +128,8 @@ Key decisions that are already locked in — do not re-litigate:
 | **Pre-capture window users** | Users whose first event is an UPDATE (no INSERT in dataset) are treated as valid; latest UPDATE is ground truth |
 | **Raw idempotency** | DELETE WHERE uuid IN (batch) + INSERT — re-processing a file replaces rows, never duplicates |
 | **File cutoff** | `max(last_modified_utc) - TAXFIX_LOOKBACK_HOURS` from `raw.ingested_files` — file mtime, not event timestamp |
+| **File status** | `raw.ingested_files.status`: `success` (0 errors), `partial` (some loaded, some skipped), `failed` (0 loaded) — set per file after processing |
+| **Validation errors** | Persisted to `raw.ingestion_errors` dead-letter table with `file_path`, `raw_line`, `error_type` (`schema_error`\|`rule_violation`), `error_msg` — never lost, queryable for replay |
 | **dbt snapshot strategy** | `check` with `check_cols='all'` — catches changes even when `updated_at` moves backward (late-arriving events) |
 | **Sensitive fields** | `clean.users_public` VIEW omits `first_name`, `last_name`, raw `email`; exposes `email_domain` only |
 
