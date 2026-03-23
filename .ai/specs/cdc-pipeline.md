@@ -53,7 +53,7 @@ data/users/**/*.jsonl
 - Pipeline ingestion script lives in `modules/data-ingestion/`
 - dbt project lives in `modules/dbt-taxfix/` with `--profiles-dir /opt/airflow/repo/modules/dbt-taxfix`
 - dbt target name: `airflow` (matches existing DAG convention)
-- DuckDB file: `/opt/airflow/repo/dbs/duckdb_data/dev.duckdb` (container path); `./dbs/duckdb_data/dev.duckdb` (host)
+- DuckDB file: `/opt/airflow/repo/dbs/duckdb_data/taxfix.duckdb` (container path); `./dbs/duckdb_data/taxfix.duckdb` (host)
 - dbt adapter: `dbt-duckdb` (not dbt-postgres — different DB from the qam pipeline)
 - Age group anonymization: `floor(age_years / 10) * 10` → label `[30-40]` (computed in dbt clean model)
 - DAG task pattern: BashOperator with `cd /opt/airflow/repo/<module> && <command>`, `append_env=True`
@@ -137,7 +137,7 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
 - Add `duckdb`, `dbt-duckdb`, and `pytest` to `requirements.txt`
 - Add to both `.env-template` and `.env`:
   ```
-  TAXFIX_DB_PATH=/opt/airflow/repo/dbs/duckdb_data/dev.duckdb
+  TAXFIX_DB_PATH=/opt/airflow/repo/dbs/duckdb_data/taxfix.duckdb
   TAXFIX_DATA_DIR=/opt/airflow/repo/data/users
   TAXFIX_LOOKBACK_HOURS=24
   TAXFIX_FULL_REFRESH=
@@ -298,9 +298,9 @@ To trigger a backfill via Airflow: set Airflow Variable `TAXFIX_FULL_REFRESH=tru
 
 **Verify:**
 - `pytest -q modules/data-ingestion/tests` — all tests pass, 0 failures
-- First run: `python modules/data-ingestion/raw.py dbs/duckdb_data/dev.duckdb data/users` → non-zero row count in `raw.cdc_events`; `raw.ingested_files` populated with one row per processed file
+- First run: `python modules/data-ingestion/raw.py dbs/duckdb_data/taxfix.duckdb data/users` → non-zero row count in `raw.cdc_events`; `raw.ingested_files` populated with one row per processed file
 - Second run (idempotency): `raw.cdc_events` row count unchanged; `raw.ingested_files` rows updated; summary shows 0 files loaded
-- Full-refresh: `python modules/data-ingestion/raw.py dbs/duckdb_data/dev.duckdb data/users --full-refresh` → same final row count (rows replaced via DELETE+INSERT, not added)
+- Full-refresh: `python modules/data-ingestion/raw.py dbs/duckdb_data/taxfix.duckdb data/users --full-refresh` → same final row count (rows replaced via DELETE+INSERT, not added)
 - Manual: modify an event field in a previously loaded JSONL file, re-run → the row in `raw.cdc_events` reflects the change (confirms DELETE+INSERT over INSERT OR IGNORE)
 - Manual: `SELECT error_type, count(*) FROM raw.ingestion_errors GROUP BY 1` → shows any schema or rule errors from the run; `raw_line` column contains the original JSON for replay
 
@@ -493,7 +493,7 @@ models:
 
 **Files:** `modules/data-ingestion/queries/business_questions.sql`, `modules/data-ingestion/queries/run_queries.py`
 
-**Verify:** `python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/dev.duckdb` prints results for all 5 queries without error; Q1 is a non-zero integer; Q2 is between 0 and 100
+**Verify:** `python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/taxfix.duckdb` prints results for all 5 queries without error; Q1 is a non-zero integer; Q2 is between 0 and 100
 
 ---
 
@@ -549,6 +549,6 @@ models:
 - [ ] `SELECT count(*) FROM clean.users` — non-zero; no `date_of_birth` column; `age_group` in `[XX-YY]` format
 - [ ] `SELECT count(*) FROM snapshots.users_snapshot` — non-zero
 - [ ] Re-running the DAG is idempotent
-- [ ] `python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/dev.duckdb` — all 5 queries return results
+- [ ] `python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/taxfix.duckdb` — all 5 queries return results
 - [ ] `modules/data-ingestion/README.md`, `modules/dbt_taxfix/README.md`, `modules/airflow/README.md` all exist and are complete
 - [ ] Top-level README module links all resolve

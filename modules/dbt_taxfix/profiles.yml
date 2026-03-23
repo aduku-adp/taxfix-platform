@@ -3,9 +3,9 @@ dbt_taxfix:
   outputs:
     airflow:
       type: duckdb
-      path: "{{ env_var('TAXFIX_DB_PATH') }}"
+      path: "{{ env_var('TAXFIX_DB_PATH', 'dbs/duckdb_data/taxfix.duckdb') }}"
       threads: 4
     dev:
       type: duckdb
-      path: "{{ env_var('TAXFIX_DB_PATH', 'dbs/duckdb_data/dev.duckdb') }}"
+      path: "{{ env_var('TAXFIX_DB_PATH', 'dbs/duckdb_data/taxfix.duckdb') }}"
       threads: 4

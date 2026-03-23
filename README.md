@@ -61,7 +61,7 @@ cd tools/
 After the `cdc_pipeline` DAG completes:
 
 ```bash
-python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/dev.duckdb
+python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/taxfix.duckdb
 ```
 
 ## Data location

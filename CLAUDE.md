@@ -49,7 +49,7 @@ modules/
     README.md           # Layer descriptions, how to run dbt locally, docs
 dbs/
   duckdb_data/
-    dev.duckdb          # DuckDB file (gitignored; directory tracked via .gitkeep)
+    taxfix.duckdb          # DuckDB file (gitignored; directory tracked via .gitkeep)
 data/
   users/YYYY/MM/DD/HH/mm/  # Partitioned CDC JSONL files (gitignored)
 tools/
@@ -78,7 +78,7 @@ requirements.txt        # Extra pip deps: dbt-core, dbt-postgres, dbt-duckdb, du
 - Airflow metadata DB: separate `airflow` database, user `airflow`
 - `AIRFLOW_PROJ_DIR=./modules/airflow` — dags/logs/config/plugins mount root
 - CDC pipeline vars (in `.env-template`):
-  - `TAXFIX_DB_PATH=/opt/airflow/repo/dbs/duckdb_data/dev.duckdb`
+  - `TAXFIX_DB_PATH=/opt/airflow/repo/dbs/duckdb_data/taxfix.duckdb`
   - `TAXFIX_DATA_DIR=/opt/airflow/repo/data/users`
   - `TAXFIX_LOOKBACK_HOURS=24` — re-scan window for late-arriving files
   - `TAXFIX_FULL_REFRESH=` — set to any non-empty value to trigger full backfill
@@ -102,7 +102,7 @@ cd tools && ./clean_deploy_stack.sh
 
 CDC events are in `data/users/YYYY/MM/DD/HH/mm/events-*.jsonl`. Each line is one event with fields: `uuid`, `source_timestamp`, `read_timestamp`, `source_metadata.change_type` (INSERT/UPDATE/DELETE), `payload`.
 
-DuckDB file lives at `dbs/duckdb_data/dev.duckdb` (host) / `/opt/airflow/repo/dbs/duckdb_data/dev.duckdb` (container). The directory is tracked via `.gitkeep`; the `.duckdb` file is gitignored.
+DuckDB file lives at `dbs/duckdb_data/taxfix.duckdb` (host) / `/opt/airflow/repo/dbs/duckdb_data/taxfix.duckdb` (container). The directory is tracked via `.gitkeep`; the `.duckdb` file is gitignored.
 
 Do not modify source JSONL files.
 

@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: stg_cdc_events
+    description: >
+      Parsed and typed CDC events from raw.cdc_events. All change types
+      (INSERT, UPDATE, DELETE) are included so the clean model has full context
+      for DELETE exclusion.
+
+      Pre-capture window edge case: some users have no INSERT in the dataset —
+      their first event is an UPDATE because they existed before the CDC capture
+      window began. These rows are included as-is; the clean model's window
+      function treats the latest UPDATE as ground truth for such users.
+
+      Field name mapping from source payload: firstname → first_name,
+      lastname → last_name, birthday → date_of_birth,
+      address.country → country.
+    columns:
+      - name: user_id
+        description: MongoDB _id of the user document.
+        tests: [not_null]
+      - name: change_type
+        description: INSERT, UPDATE, or DELETE.
+        tests: [not_null]
+      - name: source_timestamp
+        description: When the change occurred in MongoDB.
+        tests: [not_null]
+      - name: read_timestamp
+        description: When the CDC connector captured the event.
+      - name: email
+        description: "NULL for DELETE events."
+      - name: first_name
+        description: "NULL for DELETE events."
+      - name: last_name
+        description: "NULL for DELETE events."
+      - name: country
+        description: "Extracted from payload.address.country. NULL for DELETE events."
+      - name: date_of_birth
+        description: "Cast from payload.birthday (YYYY-MM-DD). NULL for DELETE events."
+      - name: created_at
+        description: "Account creation timestamp. NULL if not present in payload."

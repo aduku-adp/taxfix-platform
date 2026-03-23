@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: users
+    description: >
+      Current state of each user. Users whose latest CDC event is a DELETE are
+      excluded — they do not appear here.
+
+      Key assumption: MongoDB CDC provides the full document in every INSERT and
+      UPDATE payload (not a diff). "Applying events in chronological order"
+      therefore reduces to last-write-wins on source_timestamp: the latest
+      non-DELETE event already contains the complete current state. No
+      incremental event folding is needed.
+
+      date_of_birth is replaced by age_group (e.g. [30-40]) computed as
+      floor(age_years / 10) * 10 → lower bound, lower + 10 → upper bound.
+    columns:
+      - name: user_id
+        description: MongoDB _id. Primary key.
+        tests: [not_null, unique]
+      - name: email
+        description: User email address.
+        tests: [not_null]
+        meta:
+          sensitivity: pii
+      - name: first_name
+        description: User first name.
+        meta:
+          sensitivity: pii
+      - name: last_name
+        description: User last name.
+        meta:
+          sensitivity: pii
+      - name: country
+        description: Country from address payload.
+      - name: age_group
+        description: >
+          Ten-year age bucket e.g. [30-40]. Replaces date_of_birth.
+          NULL when the source payload has birthday: null — 449 users in this
+          dataset have a null birthday. This is a source data quality issue,
+          not a pipeline bug.
+      - name: created_at
+        description: Account creation timestamp. NULL if absent from payload.
+      - name: updated_at
+        description: source_timestamp of the latest CDC event for this user.
+
+  - name: users_public
+    description: >
+      Public-safe view of clean.users. Omits PII fields (first_name, last_name,
+      raw email). Exposes email_domain instead of the full email address.
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+      - name: email_domain
+        description: Domain portion of the email address (split on @).
