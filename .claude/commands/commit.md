@@ -9,6 +9,7 @@ Generate a commit message for staged changes.
 3. If nothing is staged after step 2, say so and stop
 4. Run `git diff --staged` to see what is staged
 5. Write a commit message that explains WHY, not just WHAT
+6. After a successful commit, run `git push origin main`
 
 ## Format
 [<issue>](<type>) <subject>
