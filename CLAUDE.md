@@ -12,9 +12,9 @@ Taxfix Data Platform Engineer case study. A local data pipeline that ingests Mon
 | Component | Version / Notes |
 |-----------|-----------------|
 | Airflow | 3.1.7 (CeleryExecutor + Redis) |
-| PostgreSQL | 16 (Airflow metadata DB + app DB `qam_db`) |
+| PostgreSQL | 16 (Airflow metadata DB) |
 | DuckDB | for CDC pipeline analytics layer |
-| dbt | dbt-core + dbt-postgres (qam pipeline) + dbt-duckdb (CDC pipeline, `modules/dbt_taxfix/`) |
+| dbt | dbt-core + dbt-duckdb (CDC pipeline, `modules/dbt_taxfix/`) |
 | Python | 3.12 |
 
 ## Structure
@@ -57,7 +57,7 @@ tools/
   sql/                  # Index/partition DDL, postgres-init scripts
 Dockerfile              # Extends apache/airflow:3.1.7
 docker-compose.yaml     # Full stack: Airflow + PostgreSQL + Redis + qam-api
-requirements.txt        # Extra pip deps: dbt-core, dbt-postgres, dbt-duckdb, duckdb, pytest, pydantic, …
+requirements.txt        # Extra pip deps: dbt-core, dbt-duckdb, duckdb, pytest, pydantic, …
 .env-template           # Committed env var template — copy to .env
 .env                    # Local env vars (gitignored)
 ```

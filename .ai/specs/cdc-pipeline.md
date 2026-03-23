@@ -54,7 +54,7 @@ data/users/**/*.jsonl
 - dbt project lives in `modules/dbt-taxfix/` with `--profiles-dir /opt/airflow/repo/modules/dbt-taxfix`
 - dbt target name: `airflow` (matches existing DAG convention)
 - DuckDB file: `/opt/airflow/repo/dbs/duckdb_data/taxfix.duckdb` (container path); `./dbs/duckdb_data/taxfix.duckdb` (host)
-- dbt adapter: `dbt-duckdb` (not dbt-postgres — different DB from the qam pipeline)
+- dbt adapter: `dbt-duckdb`
 - Age group anonymization: `floor(age_years / 10) * 10` → label `[30-40]` (computed in dbt clean model)
 - DAG task pattern: BashOperator with `cd /opt/airflow/repo/<module> && <command>`, `append_env=True`
 - EmptyOperator sentinels `start` and `end` wrapping all tasks
