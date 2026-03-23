@@ -4,9 +4,11 @@ Generate a commit message for staged changes.
 
 ## Instructions
 
-1. Run `git status` to confirm there are staged changes; if nothing is staged, say so and stop
-2. Run `git diff --staged` to see what is staged
-3. Write a commit message that explains WHY, not just WHAT
+1. Run `git status` to see staged and unstaged changes
+2. Stage any unstaged changes in `.claude/` with `git add .claude/`
+3. If nothing is staged after step 2, say so and stop
+4. Run `git diff --staged` to see what is staged
+5. Write a commit message that explains WHY, not just WHAT
 
 ## Format
 [<issue>](<type>) <subject>
@@ -32,6 +34,7 @@ Where YYYYMMDD is the current date
 - Subject: max 50 chars, imperative mood, start with upper case
 - Body: explain WHY this change was needed
 - Reference issues if applicable
+- Never add a `Co-Authored-By` trailer — commit under the local git user only
 
 ## Example
 [TFX-20260323](feat) Add password reset flow

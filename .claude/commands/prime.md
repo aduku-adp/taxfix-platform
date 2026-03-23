@@ -11,6 +11,7 @@ find . -type f -name "*.md" | head -20
 
 CLAUDE.md
 .ai/context
+.ai/specs
 
 ## Summary
 
