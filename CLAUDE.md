@@ -64,7 +64,7 @@ requirements.txt        # Extra pip deps: dbt-core, dbt-postgres, dbt-duckdb, du
 
 ## Key Conventions
 
-**DAG pattern** (follow `modules/airflow/dags/company_etl_pipeline.py`):
+**DAG pattern** (follow `modules/airflow/dags/cdc_pipeline.py`):
 - Use `BashOperator` for tasks that shell out to module scripts
 - Inject DB env via `env=DB_ENV, append_env=True`
 - Scripts run from `/opt/airflow/repo/<module>/` inside the container
