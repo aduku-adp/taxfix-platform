@@ -52,7 +52,6 @@ cd tools/
   - Username: `airflow`
   - Password: `airflow`
 
-- **Company pipeline:** run DAG `company_etl_pipeline`
 - **CDC pipeline:** run DAG `cdc_pipeline`
 
 

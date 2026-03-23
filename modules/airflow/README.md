@@ -7,7 +7,6 @@ container. The full stack (Airflow + PostgreSQL + Redis) is started via `docker-
 
 | DAG | Schedule | Description |
 |-----|----------|-------------|
-| `company_etl_pipeline` | `@daily` | Reference ETL pipeline (company data) |
 | `cdc_pipeline` | `@daily` | CDC ingestion → dbt models → dbt tests → snapshot → snapshot tests |
 
 ### `cdc_pipeline` stages
