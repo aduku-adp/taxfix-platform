@@ -1,0 +1,12 @@
+version: 2
+
+snapshots:
+  - name: users_snapshot
+    description: >
+      SCD Type 2 history of clean.users. Uses the check strategy with
+      check_cols='all' so any field change (including source_timestamp moving
+      backward due to late-arriving events) opens a new snapshot record.
+      dbt_valid_from / dbt_valid_to track the active period of each version.
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
