@@ -37,7 +37,7 @@ data/users/**/*.jsonl
 - `docker-compose.yaml` — existing stack (Airflow 3 CeleryExecutor + PostgreSQL 16 + Redis)
 - `Dockerfile` — extends `apache/airflow:3.1.7`, installs `requirements.txt`
 - `requirements.txt` — pip deps; add `duckdb` and `dbt-duckdb` here
-- `modules/airflow/dags/company_etl_pipeline.py` — **DAG pattern to follow exactly**
+- `modules/airflow/dags/cdc_pipeline.py` — **reference DAG**
 - `.env` — env vars; `AIRFLOW_PROJ_DIR=./modules/airflow` mounts dags/logs/config/plugins
 
 **Key fields in each CDC event:**
@@ -84,7 +84,7 @@ data/users/**/*.jsonl
 - Do not modify `docker-compose.yaml` or `Dockerfile`
 - Do not modify source JSONL files
 - Do not add pip deps beyond `duckdb` and `dbt-duckdb`
-- Do not use `PythonOperator` — use `BashOperator` following `company_etl_pipeline.py`
+- Do not use `PythonOperator` — use `BashOperator` following `cdc_pipeline.py`
 - Do not implement Parts 3 & 4 in code — discussion only
 
 **Out of scope:**
@@ -461,7 +461,7 @@ models:
 ### T5: Airflow DAG
 
 **Do:**
-- Create `modules/airflow/dags/cdc_pipeline.py` following `company_etl_pipeline.py` exactly:
+- Create `modules/airflow/dags/cdc_pipeline.py`:
   - DAG id `cdc_pipeline`, `schedule="@daily"`, `catchup=False`, `tags=["cdc", "duckdb", "dbt"]`
   - `DB_ENV` dict with `TAXFIX_DB_PATH`, `TAXFIX_DATA_DIR`, `TAXFIX_LOOKBACK_HOURS`, and `TAXFIX_FULL_REFRESH` (default empty) values
   - Six tasks in sequence:
@@ -524,7 +524,7 @@ models:
   - How to run locally: `dbt run / dbt test / dbt snapshot` with `--profiles-dir . --target dev`
   - How to serve docs: `dbt docs generate && dbt docs serve --port 8001`
 - Create `modules/airflow/README.md`:
-  - DAGs available: `company_etl_pipeline`, `cdc_pipeline`
+  - DAGs available: `cdc_pipeline`
   - How to trigger: Airflow UI at http://localhost:8080 (airflow/airflow)
   - Config location: `modules/airflow/config/airflow.cfg`
 - Update top-level `README.md`:
