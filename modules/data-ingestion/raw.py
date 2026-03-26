@@ -16,12 +16,15 @@ Idempotency:
 """
 import argparse
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 import business_rules
 import loader
@@ -73,6 +76,7 @@ def run(db_path: str, data_dir: str, full_refresh: bool = False) -> dict:
                     stats["events_skipped_schema"] += 1
                     file_errors += 1
                     loader.record_error(conn, str(file_path), line, "schema_error", str(exc))
+                    logger.warning("[schema_error] %s: %s", file_path, exc)
                     continue
 
                 try:
@@ -81,15 +85,16 @@ def run(db_path: str, data_dir: str, full_refresh: bool = False) -> dict:
                     stats["events_skipped_schema"] += 1
                     file_errors += 1
                     loader.record_error(conn, str(file_path), line, "schema_error", str(exc))
+                    logger.warning("[schema_error] %s: %s", file_path, exc)
                     continue
 
                 violations = business_rules.validate_payload(event)
                 if violations:
+                    error_msg = "; ".join(violations)
                     stats["events_skipped_rules"] += 1
                     file_errors += 1
-                    loader.record_error(
-                        conn, str(file_path), line, "rule_violation", "; ".join(violations)
-                    )
+                    loader.record_error(conn, str(file_path), line, "rule_violation", error_msg)
+                    logger.warning("[rule_violation] %s: %s", file_path, error_msg)
                     continue
 
                 batch.append(
@@ -132,6 +137,7 @@ def run(db_path: str, data_dir: str, full_refresh: bool = False) -> dict:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     parser = argparse.ArgumentParser(description="Ingest CDC JSONL events into DuckDB raw layer")
     parser.add_argument("db_path", help="Path to DuckDB file")
     parser.add_argument("data_dir", help="Root directory for partitioned JSONL files")

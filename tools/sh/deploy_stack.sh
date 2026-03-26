@@ -10,7 +10,7 @@ export AIRFLOW_IMAGE_NAME
 
 "$TOOLS_DIR/sh/build_airflow.sh"
 docker compose down --volumes --remove-orphans
-docker compose up
+docker compose up -d
 
 
 echo "Airflow deployed. UI: http://localhost:8080"

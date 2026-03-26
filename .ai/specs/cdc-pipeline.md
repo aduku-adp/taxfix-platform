@@ -487,13 +487,11 @@ models:
   - Q1: Count of active users — `SELECT count(*) FROM clean.users`
   - Q2: % with `@gmail.com` — filter `email ILIKE '%@gmail.com'`
   - Q3: Top 3 countries by Gmail user count — `GROUP BY country ORDER BY count DESC LIMIT 3`
-  - Q4: Users who changed email + top 5 domain transitions — window over `raw.cdc_events` ordered by `source_timestamp`, compare consecutive emails per `user_id`
-  - Q5: Avg minutes first→last event for users with >1 event — `date_diff('minute', min(source_timestamp), max(source_timestamp))`
-- Create `modules/data-ingestion/queries/run_queries.py` — takes `db_path` as `sys.argv[1]`, runs each query, prints label + tabular result
+  - Q4: Users who changed email + top 5 domain transitions — window over `staging.stg_cdc_events` ordered by `source_timestamp`, compare consecutive emails per `user_id`
+  - Q5: Avg minutes first→last event for users with >1 event — `date_diff('minute', min(source_timestamp), max(source_timestamp))` over `staging.stg_cdc_events`
 
-**Files:** `modules/data-ingestion/queries/business_questions.sql`, `modules/data-ingestion/queries/run_queries.py`
-
-**Verify:** `python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/taxfix.duckdb` prints results for all 5 queries without error; Q1 is a non-zero integer; Q2 is between 0 and 100
+**Files:** `modules/data-ingestion/queries/business_questions.sql`
+**Verify:** `modules/data-ingestion/queries/business_questions.sql` execute and give results for all 5 queries without error; Q1 is a non-zero integer; Q2 is between 0 and 100
 
 ---
 
@@ -504,7 +502,6 @@ models:
   - What it does (incremental CDC JSONL ingestion into DuckDB `raw.cdc_events` with Pydantic schema validation and business rules)
   - Folder structure: `raw.py`, `loader.py`, `validation_models.py`, `business_rules.py`, `queries/`
   - How to run locally: `python raw.py <db_path> <data_dir>`
-  - How to run queries: `python queries/run_queries.py <db_path>`
   - Incremental behavior: cutoff = `max(last_modified_utc) - TAXFIX_LOOKBACK_HOURS` from `raw.ingested_files`; files with `mtime < cutoff` skipped; `--full-refresh` resets cutoff to `datetime.min`
   - Late-arriving events: lookback window re-scans recently modified files; DELETE+INSERT on `uuid` ensures re-processed files replace stale rows
   - Schema evolution: `raw_event JSON` preserves all fields; Pydantic `extra='allow'`; new payload fields land in `payload JSON` and are available for retrospective extraction; dbt staging needs explicit column addition to expose them
@@ -531,7 +528,6 @@ models:
   - Add `modules/data-ingestion/README.md` and `modules/dbt_taxfix/README.md` to the Module documentation list
   - Add `cdc_pipeline` under "Trigger a data ingestion" with credentials note
   - Add CDC data location: `data/users/YYYY/MM/DD/HH/mm/events-*.jsonl`
-  - Add query runner instructions: `python modules/data-ingestion/queries/run_queries.py data/taxfix.db`
 
 **Files:** `modules/data-ingestion/README.md`, `modules/dbt_taxfix/README.md`, `modules/airflow/README.md`, `README.md`
 
@@ -549,6 +545,5 @@ models:
 - [ ] `SELECT count(*) FROM clean.users` — non-zero; no `date_of_birth` column; `age_group` in `[XX-YY]` format
 - [ ] `SELECT count(*) FROM snapshots.users_snapshot` — non-zero
 - [ ] Re-running the DAG is idempotent
-- [ ] `python modules/data-ingestion/queries/run_queries.py dbs/duckdb_data/taxfix.duckdb` — all 5 queries return results
 - [ ] `modules/data-ingestion/README.md`, `modules/dbt_taxfix/README.md`, `modules/airflow/README.md` all exist and are complete
 - [ ] Top-level README module links all resolve

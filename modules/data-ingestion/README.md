@@ -12,7 +12,6 @@ modules/data-ingestion/
   business_rules.py    # Business-rule checks per change_type
   queries/
     business_questions.sql  # Q1–Q5 labelled SQL queries
-    run_queries.py          # CLI runner: prints all query results
   tests/
     conftest.py             # Shared pytest fixtures
     test_validation_models.py
@@ -34,14 +33,6 @@ Environment variables override CLI arguments when set:
 - `TAXFIX_DATA_DIR` — root directory of partitioned JSONL files
 - `TAXFIX_LOOKBACK_HOURS` — re-scan window (default 24)
 - `TAXFIX_FULL_REFRESH` — any non-empty value triggers full backfill
-
-## How to run business queries
-
-```bash
-python queries/run_queries.py <db_path>
-# e.g.
-python queries/run_queries.py ../../dbs/duckdb_data/taxfix.duckdb
-```
 
 ## Incremental behaviour
 
@@ -91,7 +82,12 @@ Two gates, both skip-not-crash:
 | Business rules | INSERT/UPDATE must have `_id` + at least one other field; DELETE must have only `_id` | `rule_violation` |
 
 Skipped events are written to `raw.ingestion_errors` (one row per skipped event) with the
-original raw line preserved for replay.
+original raw line preserved for replay. Each skipped event is also emitted as a `WARNING`
+to the console in the format:
+
+```
+WARNING: [<error_type>] <file_path>: <error_msg>
+```
 
 ## Design decisions
 
@@ -115,9 +111,9 @@ original raw line preserved for replay.
 |---------|-------------|
 | `ModuleNotFoundError: duckdb` | Wrong Python environment; activate the project venv |
 | `dbs/duckdb_data/ not found` | Run `mkdir -p dbs/duckdb_data` or use the `.gitkeep` directory |
-| `Database not found` in run_queries.py | Pipeline hasn't run yet; run `raw.py` first |
+| `Database not found` in DuckDB queries | Pipeline hasn't run yet; run `raw.py` first |
 | Zero files loaded | All files are before the cutoff; use `--full-refresh` or check file mtimes |
-| Pydantic ValidationError in logs | Malformed event; event is dead-lettered in `raw.ingestion_errors` |
+| `WARNING: [schema_error] ...` in console | Malformed event; event is dead-lettered in `raw.ingestion_errors` |
 
 ## How to run tests
 

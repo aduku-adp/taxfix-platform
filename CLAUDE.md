@@ -32,7 +32,6 @@ modules/
     business_rules.py   # Business-rule checks (payload completeness per change_type)
     queries/
       business_questions.sql  # Q1–Q5 labelled SQL queries
-      run_queries.py          # CLI runner: prints all query results
     tests/
       conftest.py       # Shared fixtures: sample_insert_event, db_conn, data_dir
       test_validation_models.py
@@ -129,7 +128,7 @@ Key decisions that are already locked in — do not re-litigate:
 | **Raw idempotency** | DELETE WHERE uuid IN (batch) + INSERT — re-processing a file replaces rows, never duplicates |
 | **File cutoff** | `max(last_modified_utc) - TAXFIX_LOOKBACK_HOURS` from `raw.ingested_files` — file mtime, not event timestamp |
 | **File status** | `raw.ingested_files.status`: `success` (0 errors), `partial` (some loaded, some skipped), `failed` (0 loaded) — set per file after processing |
-| **Validation errors** | Persisted to `raw.ingestion_errors` dead-letter table with `file_path`, `raw_line`, `error_type` (`schema_error`\|`rule_violation`), `error_msg` — never lost, queryable for replay |
+| **Validation errors** | Persisted to `raw.ingestion_errors` dead-letter table with `file_path`, `raw_line`, `error_type` (`schema_error`\|`rule_violation`), `error_msg` — never lost, queryable for replay. Also emitted as `WARNING` to the console at ingestion time. |
 | **dbt snapshot strategy** | `check` with `check_cols='all'` — catches changes even when `updated_at` moves backward (late-arriving events) |
 | **Sensitive fields** | `clean.users_public` VIEW omits `first_name`, `last_name`, raw `email`; exposes `email_domain` only |
 
