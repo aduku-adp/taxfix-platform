@@ -11,10 +11,10 @@ export AIRFLOW_IMAGE_NAME
 # Clean postgres
 echo "Clean the stack"
 rm -rf "$ROOT_DIR/dbs/pg_data"
-mkdir "$ROOT_DIR/dbs/pg_data"
+mkdir -p "$ROOT_DIR/dbs/pg_data"
 
 rm -rf "$ROOT_DIR/dbs/duckdb_data"
-mkdir "$ROOT_DIR/dbs/duckdb_data"
+mkdir -p "$ROOT_DIR/dbs/duckdb_data"
 
 # Build airflow image
 echo "Build airflow image"

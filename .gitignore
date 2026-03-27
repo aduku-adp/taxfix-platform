@@ -211,6 +211,7 @@ __marimo__/
 *.DS_Store*
 .DS_Store
 /dbs/pg_data/
+!/dbs/pg_data/.gitkeep
 /dbs/duckdb_data/
 !/dbs/duckdb_data/.gitkeep
 
