@@ -36,7 +36,7 @@ cp .env-template .env
 ### 1. One-command stack startup
 
 ```bash
-cd tools/
+cd tools/sh/
 ./clean_deploy_stack.sh
 ```
 
