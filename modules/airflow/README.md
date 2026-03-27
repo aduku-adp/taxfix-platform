@@ -9,6 +9,12 @@ container. The full stack (Airflow + PostgreSQL + Redis) is started via `docker-
 |-----|----------|-------------|
 | `cdc_pipeline` | `@daily` | CDC ingestion → dbt models → dbt tests → snapshot → snapshot tests |
 
+
+### DAG graph
+
+![Airflow DAG graph](../../images/airflow-dag.png)
+
+
 ### `cdc_pipeline` stages
 
 1. **load_raw** — `python raw.py` ingests JSONL CDC events into `raw.cdc_events` (DuckDB)

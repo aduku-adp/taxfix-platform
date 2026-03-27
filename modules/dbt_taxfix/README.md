@@ -3,6 +3,10 @@
 Transforms raw CDC events in DuckDB through a three-layer pipeline:
 `raw.cdc_events` → `staging.stg_cdc_events` → `clean.users` → `snapshots.users_snapshot`.
 
+## Model lineage
+
+![dbt model lineage graph](../../images/model_lineage_graph.png)
+
 ## Layer descriptions
 
 ### `staging.stg_cdc_events`
