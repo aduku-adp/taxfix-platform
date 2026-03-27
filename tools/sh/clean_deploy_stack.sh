@@ -8,8 +8,9 @@ AIRFLOW_IMAGE_NAME="${AIRFLOW_IMAGE_NAME:-taxfix-airflow:local}"
 cd "$ROOT_DIR"
 export AIRFLOW_IMAGE_NAME
 
-# Clean postgres
+# Clean stack
 echo "Clean the stack"
+docker compose down --volumes --remove-orphans
 rm -rf "$ROOT_DIR/dbs/pg_data"
 mkdir -p "$ROOT_DIR/dbs/pg_data"
 
