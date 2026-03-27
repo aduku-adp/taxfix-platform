@@ -32,6 +32,7 @@ with DAG(
     start_date=datetime(2026, 2, 1),
     schedule="@daily",
     catchup=False,
+    is_paused_upon_creation=True,
     tags=["cdc", "duckdb", "dbt"],
 ) as dag:
     start = EmptyOperator(task_id="start")

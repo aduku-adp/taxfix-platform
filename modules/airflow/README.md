@@ -29,10 +29,14 @@ the next DAG run (both the ingestion script and `dbt run` respect this flag).
 
 ## How to trigger
 
-1. Start the stack: `cd tools && ./clean_deploy_stack.sh`
+1. Start the stack: `cd tools/sh && ./clean_deploy_stack.sh`
 2. Open the Airflow UI: `http://localhost:8080`
 3. Login with default credentials: `airflow` / `airflow`
-4. Enable and trigger the desired DAG from the DAGs list
+4. The DAG starts **paused** — toggle it on, then trigger manually
+
+> **Note:** The DAG is paused on creation (`is_paused_upon_creation=True`) to prevent the
+> scheduler from auto-queuing a run at startup. Without this, the scheduler and a manual
+> trigger can both start `load_raw` simultaneously, causing a DuckDB write-lock conflict.
 
 ## Config location
 
